@@ -112,18 +112,34 @@
             userSelect: 'none'
         });
 
+        var s = document.createElement('p').style;
+        var transformProp = (function (obj) {
+            if ('transition' in s) {
+                return { 'transition': '-webkit-transform ' + obj.options.speed + 'ms ease-in-out' };
+            } else if ('WebkitTransition' in s) {
+                return { '-webkit-transition': '-webkit-transform ' + obj.options.speed + 'ms ease-in-out' };
+            } else if ('MozTransition' in s) {
+                return { '-moz-transition': '-moz-transform ' + obj.options.speed + 'ms ease-in-out' };
+            } else if ('msTransition' in s) {
+                return { '-ms-transition': '-ms-transform ' + obj.options.speed + 'ms ease-in-out' };
+            } else if ('OTransition' in s) {
+                return { '-o-transition': '-o-transform ' + obj.options.speed + 'ms ease-in-out' };
+            } else {
+                return {};
+            }
+        })(this);
+
         this.$container.css({
             position: 'absolute',
             left: 0,
             top: 0,
             height: '100%',
-            minWidth: '100%',
-            transition: 'transform ' + this.options.speed + 'ms ease-in-out'
-        });
+            minWidth: '100%'
+        }).css(transformProp);
 
         this.$items.css({
             "display": 'inline-block',
-            '*float': 'left',
+            '*display': 'inline',
             height: '100%',
             zoom: 1
         });
@@ -353,7 +369,6 @@
         index = parseInt(index, 10);
         this.$root.trigger('slider.slideTo', [this.options.currentMarkerIndex]);
         animateWithBestMethod.call(this, index);
-        
     };
 
     slideToCustomSlide = function (index) {
