@@ -1,4 +1,4 @@
-﻿var Slider = (function ($, global) {
+var Slider = (function ($, global) {
     'use strict';
 
     var defaultOptions = {
@@ -75,7 +75,7 @@
 
         if (this.options.markers) {
             this.$navBlock = $('<div class="slider-nav" style="bottom: 8px; left: 60px; position: absolute; z-index: 3;"/>');
-            this.$markersBlock = $('<div class="slider-markers" />');
+            this.$markersBlock = $('<div class="slider-markers" style="display: inline-block; vertical-align: middle; *display: inline; *zoom: 1; border: 1px solid transparent;" />');
             this.$navBlock.append(this.$markersBlock);
             this.$root.append(this.$navBlock);
             addNavMarkers.call(this);
@@ -85,7 +85,7 @@
             this.options.prevControl = '[data-role="prevControl"]';
             prevControl = $('<div data-role="prevControl" class="slider-prevControl" />');
             if (this.options.markers) {
-                this.$navBlock.prepend(prevControl);
+                prevControl.prependTo(this.$navBlock);
             } else {
                 this.$root.append(prevControl);
             }
@@ -94,15 +94,15 @@
             this.options.nextControl = '[data-role="nextControl"]';
             nextControl = $('<div data-role="nextControl" class="slider-nextControl" />');
             if (this.options.markers) {
-                this.$navBlock.append(nextControl);
+                nextControl.appendTo(this.$navBlock);
             } else {
                 this.$root.append(nextControl);
             }
         }
 
         this.$base.append(this.$root);
-        this.$prevControl = this.$base.find(this.options.prevControl).appendTo(this.$root);
-        this.$nextControl = this.$base.find(this.options.nextControl).appendTo(this.$root);
+        this.$prevControl = this.$base.find(this.options.prevControl);
+        this.$nextControl = this.$base.find(this.options.nextControl);
     };
 
     addBasicStyles = function () {
@@ -115,7 +115,7 @@
         var s = document.createElement('p').style;
         var transformProp = (function (obj) {
             if ('transition' in s) {
-                return { 'transition': '-webkit-transform ' + obj.options.speed + 'ms ease-in-out' };
+                return { 'transition': 'transform ' + obj.options.speed + 'ms ease-in-out' };
             } else if ('WebkitTransition' in s) {
                 return { '-webkit-transition': '-webkit-transform ' + obj.options.speed + 'ms ease-in-out' };
             } else if ('MozTransition' in s) {
@@ -214,7 +214,7 @@
             return (has3D !== undefined && has3D.length > 0 && has3D !== "none");
         }();
     };
-    
+
     updateControlsState = function () {
         if (this.options.cycle) {
             return;
@@ -274,7 +274,7 @@
             this.$root.trigger('slider.slidePrev', [this.options.currentMarkerIndex]);
             slideTo.apply(this, [currentSlideIndex]);
         }, this));
-        
+
 
 
         this.$root[0].addEventListener("touchmove", $.proxy(function (e) {
@@ -344,15 +344,15 @@
         this.$container.width(width + '%');
         this.$items.width(100 / this.$items.size() + '%');
     };
-    
+
     defineSlideMethod = function () {
         if (hasTransitions) {
             if (hasTranslate3D) {
-                animateWithBestMethod = function(index) {
+                animateWithBestMethod = function (index) {
                     this.$container.css('transform', 'translate3d(' + (100 / this.$items.size()) * -index + '%, 0, 0)');
                 };
             } else {
-                animateWithBestMethod = function(index) {
+                animateWithBestMethod = function (index) {
                     this.$container.css('transform', 'translate(' + (100 / this.$items.size()) * -index + '%, 0)');
                 };
             }
