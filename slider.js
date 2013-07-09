@@ -138,10 +138,8 @@ var Slider = (function ($, global) {
         }).css(transformProp);
 
         this.$items.css({
-            "display": 'inline-block',
-            '*display': 'inline',
-            height: '100%',
-            zoom: 1
+            'float': 'left',
+            height: '100%'
         });
     };
     extendLeftItemsBlock = function () {
