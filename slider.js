@@ -114,9 +114,7 @@ var Slider = (function ($, global) {
 
         var s = document.createElement('p').style;
         var transformProp = (function (obj) {
-            if ('transition' in s) {
-                return { 'transition': 'transform ' + obj.options.speed + 'ms ease-in-out' };
-            } else if ('WebkitTransition' in s) {
+            if ('WebkitTransition' in s) {
                 return { '-webkit-transition': '-webkit-transform ' + obj.options.speed + 'ms ease-in-out' };
             } else if ('MozTransition' in s) {
                 return { '-moz-transition': '-moz-transform ' + obj.options.speed + 'ms ease-in-out' };
@@ -124,11 +122,13 @@ var Slider = (function ($, global) {
                 return { '-ms-transition': '-ms-transform ' + obj.options.speed + 'ms ease-in-out' };
             } else if ('OTransition' in s) {
                 return { '-o-transition': '-o-transform ' + obj.options.speed + 'ms ease-in-out' };
+            } else if ('transition' in s) {
+                return { 'transition': 'transform ' + obj.options.speed + 'ms ease-in-out' };
             } else {
                 return {};
             }
         })(this);
-
+        
         this.$container.css({
             position: 'absolute',
             left: 0,
