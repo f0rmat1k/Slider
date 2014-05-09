@@ -25,7 +25,12 @@ var Slider = (function ($, global) {
         disabledControlClass = 'slider-control_disabled_js',
         hasTransitions,
         hasTranslate3D,
+        cssPrefix = "",
+        touchTimer = 0,
+        detectPrefix,
         defineSlideMethod,
+        touch,
+        ontransitionend,
         animateWithBestMethod,
         currentSlideIndex = 0,
         updateCurrentMarker,
@@ -51,6 +56,7 @@ var Slider = (function ($, global) {
         this.$navBlock = $(this.options.navBlock);
         this.$markers = $();
 
+        detectPrefix();
         makeSliderHtml.call(this);
         addBasicStyles.call(this);
         updateDimension.call(this);
@@ -59,6 +65,14 @@ var Slider = (function ($, global) {
         checkForCssPropsSupport.call(this);
         defineSlideMethod.call(this);
         bindEvents.call(this);
+    };
+
+    detectPrefix = function () {
+        if ($.browser.msie && $.browser.version < 9) {
+            return;
+        }
+        var styles = window.getComputedStyle(document.documentElement, '');
+        cssPrefix = '-' + (Array.prototype.slice.call(styles).join('').match(/-(moz|webkit|ms)-/) || (styles.OLink === '' && ['', 'o']))[1] + '-';
     };
 
     //private methods
@@ -112,30 +126,13 @@ var Slider = (function ($, global) {
             userSelect: 'none'
         });
 
-        var s = document.createElement('p').style;
-        var transformProp = (function (obj) {
-            if ('WebkitTransition' in s) {
-                return { '-webkit-transition': '-webkit-transform ' + obj.options.speed + 'ms ease-in-out' };
-            } else if ('MozTransition' in s) {
-                return { '-moz-transition': '-moz-transform ' + obj.options.speed + 'ms ease-in-out' };
-            } else if ('msTransition' in s) {
-                return { '-ms-transition': '-ms-transform ' + obj.options.speed + 'ms ease-in-out' };
-            } else if ('OTransition' in s) {
-                return { '-o-transition': '-o-transform ' + obj.options.speed + 'ms ease-in-out' };
-            } else if ('transition' in s) {
-                return { 'transition': 'transform ' + obj.options.speed + 'ms ease-in-out' };
-            } else {
-                return {};
-            }
-        })(this);
-        
         this.$container.css({
             position: 'absolute',
             left: 0,
             top: 0,
             height: '100%',
             minWidth: '100%'
-        }).css(transformProp);
+        }).css(cssPrefix + 'transition', cssPrefix + 'transform ' + this.options.speed + 'ms ease-in-out');
 
         this.$items.css({
             'float': 'left',
@@ -229,62 +226,27 @@ var Slider = (function ($, global) {
     };
     bindEvents = function () {
         this.$root.on('click.slider', this.options.nextControl, $.proxy(function () {
-            if (this.options.cycle) {
-                if (this.options.currentMarkerIndex === this.$items.size() - 1) {
-                    this.options.currentMarkerIndex = 0;
-                } else {
-                    this.options.currentMarkerIndex += this.options.slide;
-                }
-
-                if (currentSlideIndex > 0 && this.options.additionalRightSlidesCount - currentSlideIndex <= this.options.visible * 2) {
-                    extendRightItemsBlock.call(this);
-                }
-            } else if (currentSlideIndex !== this.$items.size() - 1) {
-                this.options.currentMarkerIndex += this.options.slide;
-            }
-
-            currentSlideIndex += this.options.slide;
-
-            updateCurrentMarker.apply(this, [this.options.currentMarkerIndex]);
-            updateControlsState.call(this);
-            this.$root.trigger('slider.slideNext', [this.options.currentMarkerIndex]);
-            slideTo.apply(this, [currentSlideIndex]);
+            slideNext.call(this);
         }, this));
         this.$root.on('click.slider', this.options.prevControl, $.proxy(function () {
-            if (this.options.cycle) {
-                if (this.options.currentMarkerIndex === 0) {
-                    this.options.currentMarkerIndex = this.$items.size() - 1;
-                } else {
-                    this.options.currentMarkerIndex -= this.options.slide;
-                }
-
-                if (currentSlideIndex < 0 && this.options.additionalLeftSlidesCount - Math.abs(currentSlideIndex) <= this.options.visible * 2) {
-                    extendLeftItemsBlock.call(this);
-                }
-            } else if (currentSlideIndex !== 0) {
-                this.options.currentMarkerIndex -= this.options.slide;
-            }
-
-            currentSlideIndex -= this.options.slide;
-
-            updateCurrentMarker.apply(this, [this.options.currentMarkerIndex]);
-            updateControlsState.call(this);
-            this.$root.trigger('slider.slidePrev', [this.options.currentMarkerIndex]);
-            slideTo.apply(this, [currentSlideIndex]);
+            slidePrev.call(this);
         }, this));
 
+        var p = document.createElement('p');
+        if (p.addEventListener) {
+            this.$container[0].addEventListener("touchstart", $.proxy(function (e) {
+                touch.onTouchStart.call(this, e);
+            }, this), false);
 
+            this.$container[0].addEventListener("touchmove", $.proxy(function (e) {
+                touch.onTouchMove.call(this, e);
+            }, this), false);
 
-        this.$root[0].addEventListener("touchmove", $.proxy(function (e) {
-            e.preventDefault();
-            var touches = e.changedTouches;
-            var string = "";
-
-            for (var i = 0; i < touches.length; i++) {
-                waterbug.log(touches[i].pageX);
-            }
-        }, this), false);
-
+            this.$container[0].addEventListener("touchend", $.proxy(function (e) {
+                e.preventDefault();
+                touch.onTouchEnd.call(this);
+            }, this), false);
+        }
 
         if (this.options.markers) {
             this.$root.on('click.slider', '[data-bind="marker"]', $.proxy(function (e) {
@@ -314,6 +276,85 @@ var Slider = (function ($, global) {
                         this.$root.trigger('slider.autoSlideNext');
                     }, this), this.options.auto);
                 }, this));
+        }
+
+/*        (function () {
+            var myDiv;
+            myDiv = document.createElement('DIV');
+            if ('ontransitionend' in window) {
+                ontransitionend = 'transitionend';
+            } else if ('onwebkittransitionend' in window) {
+                ontransitionend = 'webkitTransitionEnd';
+            } else if ('onotransitionend' in myDiv || navigator.appName == 'Opera') {
+                ontransitionend = 'oTransitionEnd';
+            } else {
+                ontransitionend = false;
+            }
+        })();
+
+        if (ontransitionend) {
+            this.$container[0].addEventListener(ontransitionend, $.proxy(function () {
+                this.$container.css(cssPrefix + 'transition', cssPrefix + 'transform ' + this.options.speed + 'ms ease-in-out');
+            }, this), false);
+        }*/
+    };
+    touch = {
+        onTouchStart: function (e) {
+            if (e.touches.length != 1 || this.touchStarted) {
+                return;
+            }
+
+            this.touchDetecting = true;
+            this.touch = e.changedTouches[0];
+            this.pageX = this.touch.pageX;
+            this.pageY = this.touch.pageY;
+            this.offsetValue = this.$container.css(cssPrefix + 'transform').replace('matrix(', '').split(', ')[4] || 0;
+        },
+        onTouchMove: function (e) {
+            if (!this.touchStarted && !this.touchDetecting) {
+                return;
+            }
+
+            if (this.touchDetecting) {
+                touch.detectTouchMove.call(this, e);
+            }
+
+            if (this.touchStarted) {
+                touch.draw.call(this, e);
+            }
+        },
+        onTouchEnd: function () {
+            if (this.touchStarted) {
+                this.delta < 0 ? slideNext.call(this) : slidePrev.call(this);
+            }
+
+            this.touchStarted = false;
+            this.touchDetecting = false;
+
+            this.$container.css(cssPrefix + 'transition', cssPrefix + 'transform ' + this.options.speed + 'ms ease-out');
+        },
+        detectTouchMove: function (e) {
+            if (Math.abs(this.pageX - e.changedTouches[0].pageX) >= Math.abs(this.pageY - e.changedTouches[0].pageY)) {
+                e.preventDefault();
+
+                //log.text(this.touchTimer);
+                this.touchStarted = true;
+                this.touchDetecting = false;
+                this.$container.css(cssPrefix + 'transition', 'none');
+            } else {
+                this.touchStarted = false;
+                this.touchDetecting = false;
+            }
+        },
+        draw: function (e) {
+            e.preventDefault();
+            this.delta = (this.pageX - e.changedTouches[0].pageX) * -1;
+            touch.moveTo.call(this);
+        },
+        moveTo: function () {
+            var val = this.offsetValue * 1 + this.delta;
+            //log.text(this.offsetValue);
+            this.$container.css(cssPrefix + 'transform', 'translate3d(' + val + 'px, 0, 0)');
         }
     };
     updateCurrentMarker = function (index) {
@@ -378,10 +419,48 @@ var Slider = (function ($, global) {
         updateCurrentMarker.apply(this, [this.options.currentMarkerIndex]);
     };
     slideNext = function () {
-        this.$nextControl.trigger('click.slider');
+        if (this.options.cycle) {
+            if (this.options.currentMarkerIndex === this.$items.size() - 1) {
+                this.options.currentMarkerIndex = 0;
+            } else {
+                this.options.currentMarkerIndex += this.options.slide;
+            }
+
+            if (currentSlideIndex > 0 && this.options.additionalRightSlidesCount - currentSlideIndex <= this.options.visible * 2) {
+                extendRightItemsBlock.call(this);
+            }
+        } else if (currentSlideIndex !== this.$items.size() - 1) {
+            this.options.currentMarkerIndex += this.options.slide;
+        }
+
+        currentSlideIndex += this.options.slide;
+
+        updateCurrentMarker.apply(this, [this.options.currentMarkerIndex]);
+        updateControlsState.call(this);
+        this.$root.trigger('slider.slideNext', [this.options.currentMarkerIndex]);
+        slideTo.apply(this, [currentSlideIndex]);
     };
     slidePrev = function () {
-        this.prevControl.trigger('click.slider');
+        if (this.options.cycle) {
+            if (this.options.currentMarkerIndex === 0) {
+                this.options.currentMarkerIndex = this.$items.size() - 1;
+            } else {
+                this.options.currentMarkerIndex -= this.options.slide;
+            }
+
+            if (currentSlideIndex < 0 && this.options.additionalLeftSlidesCount - Math.abs(currentSlideIndex) <= this.options.visible * 2) {
+                extendLeftItemsBlock.call(this);
+            }
+        } else if (currentSlideIndex !== 0) {
+            this.options.currentMarkerIndex -= this.options.slide;
+        }
+
+        currentSlideIndex -= this.options.slide;
+
+        updateCurrentMarker.apply(this, [this.options.currentMarkerIndex]);
+        updateControlsState.call(this);
+        this.$root.trigger('slider.slidePrev', [this.options.currentMarkerIndex]);
+        slideTo.apply(this, [currentSlideIndex]);
     };
 
     //public methods
