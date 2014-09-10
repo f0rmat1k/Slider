@@ -1,3 +1,4 @@
+
 var Slider = (function ($, global) {
     'use strict';
 
